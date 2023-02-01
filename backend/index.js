@@ -1,12 +1,36 @@
-import express, { json } from "express"
+import express from "express"
 import mysql from "mysql"
 import cors from "cors"
+import { PutObjectCommand, GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import multer from 'multer'
+import dotenv from "dotenv"
+import crypto from "crypto"
 
-const app = express()
+dotenv.config()
+const app = express();
+
+const randomImageName = (bytes = 32) => crypto.randomBytes(bytes).toString('hex')
+
+const bucketName = process.env.BUCKET_NAME
+const bucketRegion = process.env.BUCKET_REGION
+const accessKey = process.env.ACCESS_KEY
+const secretAccessKey = process.env.SECRET_ACCESS_KEY
+
+const storage = multer.memoryStorage()
+const upload = multer({storage: storage})
+
+const s3 = new S3Client({
+    credentials: {
+        accessKeyId: accessKey,
+        secretAccessKey: secretAccessKey
+    },
+    region: bucketRegion
+});
 
 
 const db = mysql.createConnection({
-    host:"172.28.16.1",
+    host:"172.25.25.63",
     port: 3307,
     user:"jestin",
     password:"Jestin12345",
@@ -21,9 +45,31 @@ app.get('/', (req, res) => {
     res.json("Hi!, This is the Backend !")
 })
 
-app.post('/books', (req,res)=> {
-    const q = "INSERT INTO books (`title`,`desc`,`cover`,`price`) VALUES (?)";
-    const values = [req.body.title, req.body.desc, req.body.cover, req.body.price]
+app.post('/books', upload.single('file'), async (req,res)=> {
+    //Uploading image to S3
+    const randomName = randomImageName()
+    const params = {
+        Bucket: bucketName,
+        Key: randomName,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype
+    }
+
+    const command = new PutObjectCommand(params)
+
+    await s3.send(command)
+
+    //Getting a signed URL from S3 to add to the database. Inserted url to 'image' key in database
+    const getObjectParams = {
+        Bucket: bucketName,
+        Key: randomName
+    }
+    const getUrlCommand = new GetObjectCommand(getObjectParams);
+    const url = await getSignedUrl(s3, getUrlCommand, { expiresIn: 3600 });
+
+    //Inserting book info to MySQL database
+    const q = "INSERT INTO books (`title`,`desc`,`imageUrl`,`price`) VALUES (?)";
+    const values = [req.body.title, req.body.desc, url, req.body.price]
 
     db.query(q, [values], (err, data) => {
         if(err) return res.json(err)
@@ -31,14 +77,15 @@ app.post('/books', (req,res)=> {
     })
 })
 
-app.get('/books', (req,res)=> {
+
+app.get('/books', async (req,res)=> {
     const q = "SELECT * FROM books"
     db.query(q, (err, data)=>{
         if(err) {
             res.json(err)
             console.log(err)
         }
-        return res.json(data)
+        res.json(data)
     })
 })
 
@@ -66,13 +113,13 @@ app.delete('/books/:id', (req, res) => {
 
 app.put('/books/:id', (req,res) => {
     const bookId = req.params.id;
-    const q = "UPDATE books SET `title`= ?, `desc`= ?, `price`= ?, `cover`= ? WHERE id = ?"
+    const q = "UPDATE books SET `title`= ?, `desc`= ?, `price`= ?, `imageUrl`= ? WHERE id = ?"
 
     const values = [
         req.body.title,
         req.body.desc,
         req.body.price,
-        req.body.cover,
+        req.body.imageUrl,
       ];
     
     db.query(q, [...values, bookId], (err, data) => {

@@ -1,11 +1,12 @@
 .App {
   display: flex;
-  align-items: center;
   justify-content: center;
-  height: 100vh;
+  /* height: 100vh; */
   padding: 0 100px;
   text-align: center;
 }
+
+
 .books-container {
   display: flex;
   align-items: center;

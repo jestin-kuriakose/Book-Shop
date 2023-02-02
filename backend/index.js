@@ -5,7 +5,7 @@ import { PutObjectCommand, GetObjectCommand, S3Client } from "@aws-sdk/client-s3
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import multer from 'multer'
 import dotenv from "dotenv"
-import crypto from "crypto"
+import crypto from 'crypto'
 
 dotenv.config()
 const app = express();
@@ -27,6 +27,7 @@ const s3 = new S3Client({
     },
     region: bucketRegion
 });
+
 
 
 const db = mysql.createConnection({
@@ -68,8 +69,8 @@ app.post('/books', upload.single('file'), async (req,res)=> {
     const url = await getSignedUrl(s3, getUrlCommand, { expiresIn: 3600 });
 
     //Inserting book info to MySQL database
-    const q = "INSERT INTO books (`title`,`desc`,`imageUrl`,`price`) VALUES (?)";
-    const values = [req.body.title, req.body.desc, url, req.body.price]
+    const q = "INSERT INTO books (`title`,`desc`,`imageUrl`,`imageName`,`price`) VALUES (?)";
+    const values = [req.body.title, req.body.desc, url, randomName, req.body.price]
 
     db.query(q, [values], (err, data) => {
         if(err) return res.json(err)
@@ -79,14 +80,34 @@ app.post('/books', upload.single('file'), async (req,res)=> {
 
 
 app.get('/books', async (req,res)=> {
+    let books=[];
     const q = "SELECT * FROM books"
-    db.query(q, (err, data)=>{
+    db.query(q, async(err, data)=>{
         if(err) {
             res.json(err)
             console.log(err)
         }
-        res.json(data)
+
+            data.map((v, index)=> {
+                const book = Object.assign({},v)
+                books.push(book)
+            })
+
+            for(const book of books) {
+                const getObjectParams = {
+                    Bucket: bucketName,
+                    Key: book.imageName
+                }
+                const getUrlCommand = new GetObjectCommand(getObjectParams);
+                const url =  await getSignedUrl(s3, getUrlCommand, { expiresIn: 3600 });
+                book.imageUrl = url
+            }
+
+            res.json(books)
+
     })
+
+
 })
 
 app.get('/books/:id', (req,res)=> {

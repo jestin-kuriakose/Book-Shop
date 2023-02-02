@@ -51,7 +51,6 @@ const Add = () => {
     }
     const objectURL = URL.createObjectURL(uploadedFile)
     setFileUrl(objectURL)
-
     return() => URL.revokeObjectURL(objectURL)
   },[uploadedFile])
 

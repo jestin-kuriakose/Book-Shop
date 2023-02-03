@@ -1,5 +1,6 @@
 import axios from 'axios'
 import React from 'react'
+import { useRef } from 'react'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -9,6 +10,11 @@ const Add = () => {
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileName, setFileName] = useState()
   const [fileUrl, setFileUrl] = useState()
+  const [isFetching, setIsFetching] = useState(false)
+  const [errorFound, setErrorFound] = useState(false)
+  const titleRef = useRef()
+  const priceRef = useRef()
+  const [formIncomplete, setFormIncomplete] = useState({title: false, price: false})
   const [bookInfo, setBookInfo] = useState({
     title: "",
     desc: "",
@@ -18,6 +24,7 @@ const Add = () => {
 
   const handleChange = (e) => {
     setBookInfo((prev)=> ({...prev, [e.target.name]: e.target.value}))
+    console.log(bookInfo)
   }
 
   const handleUpload = (e) => {
@@ -28,19 +35,48 @@ const Add = () => {
   }
 
   const handleSave = async () => {
+    //checking if the form is complete
+    if(titleRef.current.value == '') {
+      setFormIncomplete({title: true})
+      if(priceRef.current.value == '') {
+        setFormIncomplete((prev)=>({...prev, price: true}))
+      } else {
+        setFormIncomplete((prev)=>({...prev, price: false}))
+      }
+      return
+    } else {
+      setFormIncomplete({title: false})
+      if(priceRef.current.value == '') {
+        setFormIncomplete((prev)=>({...prev, price: true}))
+        return
+      } else {
+        setFormIncomplete((prev)=>({...prev, price: false}))
+      }
+      console.log(formIncomplete)
+    }
+
+    setIsFetching(true)
+    setErrorFound(false)
+
     const formData = new FormData()
-    formData.append("file", uploadedFile)
+    if(uploadedFile) {
+      formData.append("file", uploadedFile)
+      formData.append("fileName", fileName)
+    }
+
     formData.append("title", bookInfo.title)
     formData.append("desc", bookInfo.desc)
     formData.append("price", bookInfo.price)
-    formData.append("fileName", fileName)
 
     try{
       const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data'}})
       console.log(result.data)
+      setIsFetching(false)
       navigate("/")
     } catch(err) {
       console.log(err)
+      setIsFetching(false)
+      setErrorFound(true)
     }
   }
 
@@ -57,12 +93,14 @@ const Add = () => {
   return (
     <div className='form'>
       <h1>Add New Book</h1>
-      <input type="text" placeholder='Book Title' name='title' onChange={handleChange}/>
+      <input ref={titleRef} className={formIncomplete.title ? 'incomplete' : 'complete'} required type="text" placeholder='Book Title' name='title' onChange={handleChange}/>
       <textarea name="desc" id="" cols="30" rows="10" placeholder='Description' onChange={handleChange}></textarea>
-      <input type="number" name='price' placeholder='Price' onChange={handleChange}/>
+      <input ref={priceRef} className={formIncomplete.price ? 'incomplete' : 'complete'} required type="number" name='price' placeholder='Price' onChange={handleChange}/>
       <img width="100" height="150" src={fileUrl} alt="" />
       <input type="file" name='cover' onChange={handleUpload}/>
-      <button onClick={()=>handleSave()}>Save</button>
+      {(formIncomplete.title || formIncomplete.price) && <p style={{color:"indianred", margin:"0"}}>Please complete the required columns to continue</p>}
+      {errorFound && <p style={{color:"indianred", margin:"0"}}>Error saving new book. Please try again</p>}
+      {<button onClick={()=>handleSave()}>{isFetching ? 'Saving' : 'Save'}</button>}
     </div>
   )
 }

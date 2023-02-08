@@ -4,6 +4,7 @@ import { useRef } from 'react'
 import { useEffect } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import jwt_decode from "jwt-decode"
 
 const Add = () => {
   const navigate = useNavigate()
@@ -21,6 +22,7 @@ const Add = () => {
     price: null,
     imageUrl:""
   })
+
 
   const handleChange = (e) => {
     setBookInfo((prev)=> ({...prev, [e.target.name]: e.target.value}))
@@ -67,9 +69,9 @@ const Add = () => {
     formData.append("title", bookInfo.title)
     formData.append("desc", bookInfo.desc)
     formData.append("price", bookInfo.price)
-
+    
     try{
-      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data'}})
+      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data', authorization: "Bearer " + user.accessToken}})
       console.log(result.data)
       setIsFetching(false)
       navigate("/")

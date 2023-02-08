@@ -6,6 +6,8 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import multer from 'multer'
 import dotenv from "dotenv"
 import crypto from 'crypto'
+import jwt from "jsonwebtoken";
+import util from 'util';
 
 dotenv.config()
 const app = express();
@@ -20,6 +22,7 @@ const secretAccessKey = process.env.SECRET_ACCESS_KEY
 const storage = multer.memoryStorage()
 const upload = multer({storage: storage})
 
+// Connecting to AWS S3
 const s3 = new S3Client({
     credentials: {
         accessKeyId: accessKey,
@@ -28,19 +31,46 @@ const s3 = new S3Client({
     region: bucketRegion
 });
 
-
-
+// Creating new connection to MySQL DB
 const db = mysql.createConnection({
-    host:"172.16.2.28",
+    host:"172.25.25.63",
     port: 3307,
     user:"jestin",
     password:"Jestin12345",
     database: "test"
 })
 
+// Checking to see if we are connected to MySQL DB
+db.connect((err)=> {
+    if(err) {
+        throw(err)
+    }
+    console.log("Connected to DB")
+})
+
 app.use(express.json())
 
 app.use(cors())
+
+// Middleware to verify if the user is authenticated
+const verify = (req, res, next) => {
+    const authHeader = req.headers.authorization
+
+    if(authHeader) {
+        const token = authHeader.split(" ")[1]
+        jwt.verify(token, "secretKey", (err, user) => {
+            if(err) {
+                console.log(err)
+                return res.status(403).json("Token is not valid!")
+            }
+
+            req.user = user;
+            next()
+        })
+    } else {
+        return res.status(401).json("You are not authenticated")
+    }
+}
 
 app.get('/', (req, res) => {
     res.json("Hi!, This is the Backend !")
@@ -48,7 +78,7 @@ app.get('/', (req, res) => {
 
 // Add a book to DB
 app.post('/books', upload.single('file'), async (req,res)=> {
-
+    console.log(req.headers)
     //Uploading image to S3
     let url = '';
     let randomName = randomImageName()
@@ -118,7 +148,7 @@ app.get('/books', async (req,res)=> {
             
         }
 
-        res.json(books)
+        books && res.json(books)
     
     })
 
@@ -157,7 +187,7 @@ app.get('/books/:id', (req,res)=> {
 })
 
 // Delete a book from DB
-app.delete('/books/:id', (req, res) => {
+app.delete('/books/:id', verify, (req, res) => {
     const bookId = req.params.id
     const q = "DELETE FROM books WHERE id= ? "
 
@@ -226,6 +256,109 @@ app.put('/books/:id', upload.single('file'), async(req,res) => {
         return res.json(data);
     })
 })
+
+let refreshTokens = []
+
+app.post("/refresh", (req, res) => {
+    const refreshToken = req.body.token
+
+    if(!refreshToken) return res.status(401).json("You are not authenticated")
+
+    if(!refreshTokens.includes(refreshToken)) {
+        return res.status(403).json("Refresh token is not valid")
+    }
+
+    jwt.verify(refreshToken, "refreshSecretKey", (err,user) => {
+        err && console.log(err)
+        refreshTokens = refreshTokens.filter((token)=> token !== refreshToken)
+
+        const newAccessToken = generateAccessToken(user)
+        const newRefreshToken = generateRefreshToken(user)
+
+        refreshTokens.push(newRefreshToken)
+
+        res.status(200).json({
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken
+        })
+    })
+})
+
+const generateAccessToken = (user) => {
+    return jwt.sign({id: user.user_id, isAdmin: user.isAdmin}, "secretKey", {expiresIn: "1m"})
+}
+
+const generateRefreshToken = (user) => {
+    return jwt.sign({id: user.user_id, isAdmin: user.isAdmin}, "refreshSecretKey")
+}
+
+// Login User
+app.post('/login', async (req,res) => {
+    let user_exist = false;
+    const q = "SELECT * from users where user_email = ?"
+    const email = req.body.email
+    const password = req.body.password
+
+        const query = util.promisify(db.query).bind(db);
+
+        (async () => {
+            try {
+                const row = await query(`SELECT * from users where user_email = '${email}'`);
+                if(row[0]) {
+                    const user = await query(`SELECT * from users where user_email = '${email}' AND user_password = '${password}'`)
+                    if(user[0]) {
+                        const accessToken = generateAccessToken(user[0])
+                        const refreshToken = generateRefreshToken(user[0])
+                        refreshTokens.push(refreshToken)
+
+                        res.json({
+                            user_email: user[0].user_email,
+                            isAdmin: user[0].isAdmin,
+                            accessToken,
+                            refreshToken
+                        })
+
+                    } else {
+                        return res.status(403).json("Wrong email or password")
+                    }
+                    
+                } else {
+                    res.status(401).json("User doesn't exist")
+                }
+            } catch(err) {
+                console.log(err)
+                res.status(400).json("Server error")
+            } 
+        })();
+})
+
+app.post('/logout', (req, res) => {
+    const refreshToken = req.body.token
+    refreshTokens = refreshTokens.filter(token => token !== refreshToken)
+    res.status(200).json("You logged out successfully")
+})
+
+app.get('/users', (req, res) => {
+    (async() => {
+        try{
+            const query = util.promisify(db.query).bind(db)
+            const users = await query(`SELECT * FROM users`)
+            res.status(200).json(users)
+        } catch(err) {
+            console.log(err)
+        }
+    })()
+})
+
+app.delete("/users/:userId", verify, (req, res) => {
+    console.log(req.user)
+    console.log(req.params)
+    if (req.user.id === req.params.userId || req.user.isAdmin) {
+      res.status(200).json("User has been deleted.");
+    } else {
+      res.status(403).json("You are not allowed to delete this user!");
+    }
+  });
 
 app.listen(8800, ()=>{
     console.log("Server connected")

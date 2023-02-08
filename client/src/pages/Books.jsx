@@ -3,14 +3,23 @@ import axios from "axios"
 import { useState } from 'react'
 import { Link, useNavigate } from "react-router-dom";
 import cover from '../assets/book-cover.png'
+import jwt_decode from "jwt-decode"
 
 const Books = () => {
     const [allBooks, setAllBooks] = useState([])
+
+    const accessToken = localStorage.getItem("accessToken")
+    const refreshToken = localStorage.getItem("refreshToken")
+
     const navigate = useNavigate()
+    //const {a,b,c,d} = localStorage.getItem("user")
+    const a = JSON.stringify(localStorage.getItem("user"))
+    console.log(localStorage.getItem("user"))
+    console.log(a)
     useEffect(()=> {
         const getBooks = async () => {
             try{
-                const res = await axios.get('http://localhost:8800/books')
+                const res = await axios.get("http://localhost:8800/books")
                 setAllBooks(res.data)
             } catch(err) {
                 console.log(err)
@@ -28,11 +37,23 @@ const Books = () => {
             console.log(err)
         }
     }
+
+    const handleLogout = async() => {
+        await axios.post(`http://localhost:8800/logout`, refreshToken , {
+            headers: {authorization: "Bearer " + accessToken},
+        })
+        localStorage.clear();
+        window.location.reload()
+    }
+
   return (
     <div className='books'>
         <div className='cont'>
             <h1 style={{textAlign:"center"}}>Book Shop</h1>
             <Link to={'/add'}>Add New Book</Link>
+            {accessToken ? <button onClick={()=>handleLogout()}>Logout</button> : 
+                            <Link to={'/login'}>Login</Link>}
+                            <p></p>
         </div>
 
         <div className='books-container'>

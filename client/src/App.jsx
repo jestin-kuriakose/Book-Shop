@@ -11,15 +11,15 @@ import Users from "./pages/Users"
 
 function App() {
   const userLoggedIn = localStorage.getItem("accessToken") ? true : false
-  console.log(userLoggedIn)
   return (
     <div className="App">
       <BrowserRouter>
         <Routes>
           <Route path="/" element={userLoggedIn ? <Books/> : <Login/>}/>
+          <Route path="/books" element={userLoggedIn ? <Books/> : <Login/>}/>
           <Route path="/add" element={userLoggedIn ? <Add/> : <Login/>}/>
           <Route path="/update/:id" element={userLoggedIn ? <Update/> : <Login/>}/>
-          <Route path="/register" element={userLoggedIn ? <Register/> : <Login/>}/>
+          <Route path="/register" element={userLoggedIn ? <Books/> : <Register/>}/>
           <Route path="/users" element={userLoggedIn ? <Users/> : <Login/>}/>
           <Route path="/login" element={userLoggedIn ? <Books/> : <Login/>}/>
         </Routes> 

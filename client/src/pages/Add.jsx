@@ -22,6 +22,7 @@ const Add = () => {
     price: null,
     imageUrl:""
   })
+  const accessToken = localStorage.getItem("accessToken")
 
 
   const handleChange = (e) => {
@@ -71,7 +72,7 @@ const Add = () => {
     formData.append("price", bookInfo.price)
     
     try{
-      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data', authorization: "Bearer " + user.accessToken}})
+      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data', authorization: "Bearer " + accessToken}})
       console.log(result.data)
       setIsFetching(false)
       navigate("/")

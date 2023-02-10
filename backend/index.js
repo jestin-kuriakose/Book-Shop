@@ -33,7 +33,7 @@ const s3 = new S3Client({
 
 // Creating new connection to MySQL DB
 const db = mysql.createConnection({
-    host:"172.25.25.63",
+    host:"192.168.0.194",
     port: 3307,
     user:"jestin",
     password:"Jestin12345",
@@ -78,7 +78,6 @@ app.get('/', (req, res) => {
 
 // Add a book to DB
 app.post('/books', upload.single('file'), async (req,res)=> {
-    console.log(req.headers)
     //Uploading image to S3
     let url = '';
     let randomName = randomImageName()
@@ -292,6 +291,29 @@ const generateRefreshToken = (user) => {
     return jwt.sign({id: user.user_id, isAdmin: user.isAdmin}, "refreshSecretKey")
 }
 
+// Register a User
+app.post('/register', async (req, res) => {
+    const user_name = req.body.name
+    const user_email = req.body.email
+    const user_password = req.body.password
+
+    const query = util.promisify(db.query).bind(db);
+
+    (async () => {
+        try {
+            const row = await query(`SELECT * from users where user_email = '${user_email}'`)
+            if(!row[0]) {
+                const response = await query(`INSERT INTO users (user_email, user_password, user_name) VALUES ('${user_email}', '${user_password}', '${user_name}')`)
+                res.status(200).json("User created")
+            } else {
+                 res.status(401).json("User exists, Login instead")
+            }
+        } catch (err) {
+            res.status(400).json("Server error")
+        }
+    })()
+})
+
 // Login User
 app.post('/login', async (req,res) => {
     let user_exist = false;
@@ -314,6 +336,7 @@ app.post('/login', async (req,res) => {
                         res.json({
                             user_email: user[0].user_email,
                             isAdmin: user[0].isAdmin,
+                            user_name: user[0].user_name,
                             accessToken,
                             refreshToken
                         })

@@ -5,8 +5,10 @@ import { useEffect } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import jwt_decode from "jwt-decode"
+import { useSelector } from 'react-redux'
 
 const Add = () => {
+  const count = useSelector((state)=>state.counter.value)
   const navigate = useNavigate()
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileName, setFileName] = useState()
@@ -95,7 +97,7 @@ const Add = () => {
 
   return (
     <div className='form'>
-      <h1>Add New Book</h1>
+      <h1>Add New Book {count}</h1>
       <input ref={titleRef} className={formIncomplete.title ? 'incomplete' : 'complete'} required type="text" placeholder='Book Title' name='title' onChange={handleChange}/>
       <textarea name="desc" id="" cols="30" rows="10" placeholder='Description' onChange={handleChange}></textarea>
       <input ref={priceRef} className={formIncomplete.price ? 'incomplete' : 'complete'} required type="number" name='price' placeholder='Price' onChange={handleChange}/>

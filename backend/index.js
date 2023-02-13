@@ -19,6 +19,12 @@ const bucketRegion = process.env.BUCKET_REGION
 const accessKey = process.env.ACCESS_KEY
 const secretAccessKey = process.env.SECRET_ACCESS_KEY
 
+const db_host = process.env.DB_HOST
+const db_port = process.env.DB_PORT
+const db_user = process.env.DB_USER
+const db_pass = process.env.DB_PASSWORD
+const db_name = process.env.DB_NAME
+
 const storage = multer.memoryStorage()
 const upload = multer({storage: storage})
 
@@ -33,11 +39,11 @@ const s3 = new S3Client({
 
 // Creating new connection to MySQL DB
 const db = mysql.createConnection({
-    host:"192.168.0.194",
-    port: 3307,
-    user:"jestin",
-    password:"Jestin12345",
-    database: "test"
+    host: db_host,
+    port: db_port,
+    user: db_user,
+    password: db_pass,
+    database: db_name
 })
 
 // Checking to see if we are connected to MySQL DB
@@ -54,6 +60,7 @@ app.use(cors())
 
 // Middleware to verify if the user is authenticated
 const verify = (req, res, next) => {
+    console.log(req.headers.authorization)
     const authHeader = req.headers.authorization
 
     if(authHeader) {

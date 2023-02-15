@@ -67,10 +67,8 @@ const verify = (req, res, next) => {
         const token = authHeader.split(" ")[1]
         jwt.verify(token, "secretKey", (err, user) => {
             if(err) {
-                console.log(err)
                 return res.status(403).json("Token is not valid!")
             }
-
             req.user = user;
             next()
         })
@@ -113,7 +111,7 @@ app.post('/books', upload.single('file'), async (req,res)=> {
 
     //Inserting book info to MySQL database
     const q = "INSERT INTO books (`title`,`desc`,`imageUrl`,`imageName`,`price`) VALUES (?)";
-   const values = [req.body.title, req.body.desc, url, randomName, req.body.price]
+    const values = [req.body.title, req.body.desc, url, randomName, req.body.price]
 
     db.query(q, [values], (err, data) => {
         if(err) return res.json(err)
@@ -322,44 +320,41 @@ app.post('/register', async (req, res) => {
 
 // Login User
 app.post('/login', async (req,res) => {
-    let user_exist = false;
-    const q = "SELECT * from users where user_email = ?"
     const email = req.body.email
     const password = req.body.password
     
+    const query = util.promisify(db.query).bind(db);
 
-        const query = util.promisify(db.query).bind(db);
+    (async () => {
+        try {
+            const row = await query(`SELECT * from users where user_email = '${email}'`);
+            if(row[0]) {
+                const user = await query(`SELECT * from users where user_email = '${email}' AND user_password = '${password}'`)
+                if(user[0]) {
+                    const accessToken = generateAccessToken(user[0])
+                    const refreshToken = generateRefreshToken(user[0])
+                    refreshTokens.push(refreshToken)
 
-        (async () => {
-            try {
-                const row = await query(`SELECT * from users where user_email = '${email}'`);
-                if(row[0]) {
-                    const user = await query(`SELECT * from users where user_email = '${email}' AND user_password = '${password}'`)
-                    if(user[0]) {
-                        const accessToken = generateAccessToken(user[0])
-                        const refreshToken = generateRefreshToken(user[0])
-                        refreshTokens.push(refreshToken)
+                    res.json({
+                        user_email: user[0].user_email,
+                        isAdmin: user[0].isAdmin,
+                        user_name: user[0].user_name,
+                        accessToken,
+                        refreshToken
+                    })
 
-                        res.json({
-                            user_email: user[0].user_email,
-                            isAdmin: user[0].isAdmin,
-                            user_name: user[0].user_name,
-                            accessToken,
-                            refreshToken
-                        })
-
-                    } else {
-                        return res.status(403).json("Wrong email or password")
-                    }
-                    
                 } else {
-                    res.status(401).json("User doesn't exist")
+                    return res.status(403).json("Wrong email or password")
                 }
-            } catch(err) {
-                console.log(err)
-                res.status(400).json("Server error")
-            } 
-        })();
+                
+            } else {
+                res.status(401).json("User doesn't exist")
+            }
+        } catch(err) {
+            console.log(err)
+            res.status(400).json("Server error")
+        } 
+    })();
 })
 
 app.post('/logout', (req, res) => {
@@ -381,8 +376,6 @@ app.get('/users', (req, res) => {
 })
 
 app.delete("/users/:userId", verify, (req, res) => {
-    console.log(req.user)
-    console.log(req.params)
     if (req.user.id === req.params.userId || req.user.isAdmin) {
       res.status(200).json("User has been deleted.");
     } else {

@@ -1,6 +1,9 @@
 import axios from "axios"
 import jwt_decode from "jwt-decode"
 
+const url = process.env.NODE_ENV === "development" ? "http://localhost:8800" : "https://book-shop-0twv.onrender.com"
+
+
 const axiosJWT = axios.create()
 
 axiosJWT.interceptors.request.use(
@@ -15,7 +18,7 @@ axiosJWT.interceptors.request.use(
         const decodedToken = jwt_decode(accToken);
         if (decodedToken.exp * 1000 < currentDate.getTime()) {
             try {
-                const res = await axios.post("http://localhost:8800/refresh", { token: refToken });
+                const res = await axios.post(`${url}/refresh`, { token: refToken });
                 console.log(res.data)
                 console.log("new access token created")
                 config.headers["authorization"] = "Bearer " + res.data.accessToken;
@@ -37,7 +40,7 @@ axiosJWT.interceptors.request.use(
 export const requestwithTokens = async(type, endpoint, body, token, formData) => {
     const res = await axiosJWT({
         method: type,
-        url: `http://localhost:8800${endpoint}`,
+        url: `${url}${endpoint}`,
         data: body,
         headers: formData ? {'authorization': `Bearer ${token}`,
                     'Content-Type': 'multipart/form-data'} :
@@ -53,7 +56,7 @@ export const requestWithoutTokens = async(type, endpoint, body) => {
     try {
         const res = await axios({
             method: type,
-            url: `http://localhost:8800${endpoint}`,
+            url: `${url}${endpoint}`,
             data: body,
 
         })

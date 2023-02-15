@@ -12,6 +12,7 @@ import Users from "./pages/Users"
 
 function App() {
   const userLoggedIn = useSelector((state)=>state.user.currentUser.accessToken) ? true : false
+
   return (
     <div className="App">
       <BrowserRouter>

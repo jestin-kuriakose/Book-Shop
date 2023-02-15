@@ -1,39 +1,23 @@
 import axios from 'axios'
 import React from 'react'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
+import { onSuccess } from '../redux/userSlice'
+import { requestwithTokens } from '../requests'
 
 const Book = ({book}) => {
     const currentUser = useSelector((state)=>state.user.currentUser)
-
-    // axiosJWT.interceptors.request.use(
-    //     async (config) => {
-    //       let currentDate = new Date();
-    //       const decodedToken = jwt_decode(user.accessToken);
-    //       console.log(decodedToken)
-    //       if (decodedToken.exp * 1000 < currentDate.getTime()) {
-    //         const data = await refreshToken(user.refreshToken);
-    //         setUser({
-    //             ...user,
-    //             accessToken: data.accessToken,
-    //             refreshToken: data.refreshToken,
-    //           });
-    //         console.log(data)
-    //         config.headers["authorization"] = "Bearer " + data.accessToken;
-    //       }
-    //       return config;
-    //     },
-    //     (error) => {
-    //       return Promise.reject(error);
-    //     }
-    //   );
-
+    const dispatch = useDispatch()
     const handleDelete = async (id) => {
-        console.log(id)
         try{
-            await axios.delete(`http://localhost:8800/books/${id}`, currentUser.refreshToken , {
-                headers: {authorization: "Bearer " + currentUser.accessToken},
-            })
+            const res = await requestwithTokens('delete', `/books/${id}`, currentUser.refreshToken, currentUser.accessToken,false)
+            
+            // updating the accessToken in the state if there is a new one created 
+            const newAccessToken = res.config.headers.authorization.split(" ")[1]
+            if(currentUser.accessToken != newAccessToken) {
+                dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+            }
+
             window.location.reload()
         }catch(err) {
             console.log(err)

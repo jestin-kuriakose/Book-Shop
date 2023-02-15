@@ -5,11 +5,14 @@ import { useEffect } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import jwt_decode from "jwt-decode"
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
+import { onSuccess } from '../redux/userSlice'
+import { requestwithTokens } from '../requests'
 
 const Add = () => {
-  const count = useSelector((state)=>state.counter.value)
+  const currentUser = useSelector((state)=>state.user.currentUser)
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileName, setFileName] = useState()
   const [fileUrl, setFileUrl] = useState()
@@ -24,8 +27,6 @@ const Add = () => {
     price: null,
     imageUrl:""
   })
-  const accessToken = localStorage.getItem("accessToken")
-
 
   const handleChange = (e) => {
     setBookInfo((prev)=> ({...prev, [e.target.name]: e.target.value}))
@@ -72,10 +73,16 @@ const Add = () => {
     formData.append("title", bookInfo.title)
     formData.append("desc", bookInfo.desc)
     formData.append("price", bookInfo.price)
-    
+    console.log(formData)
     try{
-      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data', authorization: "Bearer " + accessToken}})
-      console.log(result.data)
+      const res = await requestwithTokens('post', '/books', formData, currentUser.accessToken, true)
+
+      // updating the accessToken in the state if there is a new one created 
+      const newAccessToken = res.config.headers.authorization.split(" ")[1]
+      if(currentUser.accessToken != newAccessToken) {
+          dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+      }
+
       setIsFetching(false)
       navigate("/")
     } catch(err) {
@@ -97,7 +104,7 @@ const Add = () => {
 
   return (
     <div className='form'>
-      <h1>Add New Book {count}</h1>
+      <h1>Add New Book</h1>
       <input ref={titleRef} className={formIncomplete.title ? 'incomplete' : 'complete'} required type="text" placeholder='Book Title' name='title' onChange={handleChange}/>
       <textarea name="desc" id="" cols="30" rows="10" placeholder='Description' onChange={handleChange}></textarea>
       <input ref={priceRef} className={formIncomplete.price ? 'incomplete' : 'complete'} required type="number" name='price' placeholder='Price' onChange={handleChange}/>

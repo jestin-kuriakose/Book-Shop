@@ -162,7 +162,7 @@ app.get('/books', async (req,res)=> {
 })
 
 // fetching individual book according to id
-app.get('/books/:id', (req,res)=> {
+app.get('/books/:id', verify, (req,res)=> {
     const bookId = req.params.id
     let books = []
     const q = "SELECT * FROM books where id = ? "
@@ -267,7 +267,6 @@ let refreshTokens = []
 
 app.post("/refresh", (req, res) => {
     const refreshToken = req.body.token
-
     if(!refreshToken) return res.status(401).json("You are not authenticated")
 
     if(!refreshTokens.includes(refreshToken)) {
@@ -276,16 +275,16 @@ app.post("/refresh", (req, res) => {
 
     jwt.verify(refreshToken, "refreshSecretKey", (err,user) => {
         err && console.log(err)
-        refreshTokens = refreshTokens.filter((token)=> token !== refreshToken)
+        // refreshTokens = refreshTokens.filter((token)=> token !== refreshToken)
 
         const newAccessToken = generateAccessToken(user)
-        const newRefreshToken = generateRefreshToken(user)
+        // const newRefreshToken = generateRefreshToken(user)
 
-        refreshTokens.push(newRefreshToken)
+        // refreshTokens.push(newRefreshToken)
 
         res.status(200).json({
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken
+            // refreshToken: newRefreshToken
         })
     })
 })
@@ -327,6 +326,7 @@ app.post('/login', async (req,res) => {
     const q = "SELECT * from users where user_email = ?"
     const email = req.body.email
     const password = req.body.password
+    
 
         const query = util.promisify(db.query).bind(db);
 

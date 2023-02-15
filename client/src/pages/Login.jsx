@@ -1,9 +1,8 @@
-import axios from 'axios'
 import React, { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import jwt_decode from "jwt-decode";
 import { useDispatch, useSelector } from 'react-redux';
 import { onSuccess } from '../redux/userSlice';
+import { requestWithoutTokens } from '../requests';
 
 const Login = () => {
     const dispatch = useDispatch()
@@ -15,20 +14,19 @@ const Login = () => {
     const handleLogin = async(e) => {
         e.preventDefault()
         setError("")
-        try{
-            const res = await axios.post('http://localhost:8800/login',
-            {
-                email: loginInput.email,
-                password: loginInput.password
-            })
-            dispatch(onSuccess(res.data))
-            setUser(res.data)
-            navigate('/books')
 
-        } catch(err) {
-            console.log(err.response.data)
-            setError(err.response.data)
+        const result = await requestWithoutTokens('post', '/login', {
+            email: loginInput.email,
+            password: loginInput.password
+        })
+
+        if(result.response?.status == 403) {
+            setError(result.response?.data)
+            return 
         }
+
+        dispatch(onSuccess(result))
+        navigate('/books')
 
     }
   return (

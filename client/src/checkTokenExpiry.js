@@ -1,5 +1,4 @@
 import jwt_decode from "jwt-decode";
-import refreshToken from "./refreshToken";
 
 const checkTokenExpiry = async () => {
 

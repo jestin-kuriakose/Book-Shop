@@ -7,10 +7,10 @@ import jwt_decode from "jwt-decode"
 import Book from '../components/Book';
 import { useDispatch, useSelector } from 'react-redux';
 import { increment } from '../redux/counterSlice';
-import { getRequest } from '../requests';
+import { requestWithoutTokens, requestwithTokens } from '../requests';
+import { onSuccess } from '../redux/userSlice';
 
 const Books = () => {
-    const count = useSelector((state)=> state.counter.value)
     const currentUser = useSelector((state)=> state.user.currentUser)
     const userLoggedIn = useSelector((state)=>state.user.currentUser.accessToken) ? true : false
     const dispatch = useDispatch()
@@ -24,13 +24,15 @@ const Books = () => {
     useEffect(()=> {
         const getBooks = async () => {
             try{
-                // const res = await axios.get("http://localhost:8800/books")
-                // const res = await axios({
-                //     method: 'get',
-                //     url: 'http://localhost:8800/books'
-                // })
-                const result = await getRequest('get', '/books')
-                console.log(result)
+                const res = await requestwithTokens('get', '/books', currentUser.refreshToken, currentUser.accessToken, false)
+                const result = res.data
+                
+                // updating the accessToken in the state if there is a new one created 
+                const newAccessToken = res.config.headers.authorization.split(" ")[1]
+                if(currentUser.accessToken != newAccessToken) {
+                    dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+                }
+
                 setAllBooks(result)
                 const pageCount = (Math.ceil(result.length/5)*5) / 5
 
@@ -68,9 +70,14 @@ const Books = () => {
     }
 
     const handleLogout = async() => {
-        await axios.post(`http://localhost:8800/logout`, currentUser.refreshToken , {
-            headers: {authorization: "Bearer " + currentUser.accessToken},
-        })
+        const res = await requestwithTokens('post', '/logout', currentUser.refreshToken, currentUser.accessToken, false)
+
+      // updating the accessToken in the state if there is a new one created 
+        const newAccessToken = res.config.headers.authorization.split(" ")[1]
+        if(currentUser.accessToken != newAccessToken) {
+            dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+        }
+
         localStorage.clear();
         window.location.reload()
     }

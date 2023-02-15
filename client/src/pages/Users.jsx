@@ -1,7 +1,6 @@
 import axios from "axios";
 import { useState } from "react";
 import jwt_decode from "jwt-decode";
-import refreshToken from "../refreshToken";
 
 function Users() {
   const [user, setUser] = useState(null);

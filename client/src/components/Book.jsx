@@ -1,13 +1,23 @@
 import axios from 'axios'
 import React from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
+import { onSuccess } from '../redux/userSlice'
+import { requestwithTokens } from '../requests'
 
 const Book = ({book}) => {
-
+    const currentUser = useSelector((state)=>state.user.currentUser)
+    const dispatch = useDispatch()
     const handleDelete = async (id) => {
-        console.log(id)
         try{
-            await axios.delete(`http://localhost:8800/books/${id}`)
+            const res = await requestwithTokens('delete', `/books/${id}`, currentUser.refreshToken, currentUser.accessToken,false)
+            
+            // updating the accessToken in the state if there is a new one created 
+            const newAccessToken = res.config.headers.authorization.split(" ")[1]
+            if(currentUser.accessToken != newAccessToken) {
+                dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+            }
+
             window.location.reload()
         }catch(err) {
             console.log(err)

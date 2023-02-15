@@ -1,44 +1,39 @@
-import axios from 'axios'
 import React, { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import jwt_decode from "jwt-decode";
+import { useDispatch, useSelector } from 'react-redux';
+import { onSuccess } from '../redux/userSlice';
+import { requestWithoutTokens } from '../requests';
 
 const Login = () => {
-
+    const dispatch = useDispatch()
     const [loginInput, setLoginInput] = useState({})
-    const [user, setUser] = useState({})
     const [error, setError] = useState("")
     const navigate = useNavigate()
+    const currentUser = useSelector((state)=>state.user.currentUser)
 
     const handleLogin = async(e) => {
         e.preventDefault()
         setError("")
-        setUser({})
-        try{
-            const res = await axios.post('http://localhost:8800/login',
-            {
-                email: loginInput.email,
-                password: loginInput.password
-            })
-            localStorage.setItem("user_email", res.data.user_email)
-            localStorage.setItem("user_name", res.data.user_name)
-            localStorage.setItem("isAdmin", res.data.isAdmin)
-            localStorage.setItem("refreshToken", res.data.refreshToken)
-            localStorage.setItem("accessToken", res.data.accessToken)
 
-            setUser(res.data)
-            window.location.reload()
+        const result = await requestWithoutTokens('post', '/login', {
+            email: loginInput.email,
+            password: loginInput.password
+        })
 
-        } catch(err) {
-            console.log(err.response.data)
-            setError(err.response.data)
+        if(result.response?.status == 403) {
+            setError(result.response?.data)
+            return 
         }
+
+        dispatch(onSuccess(result))
+        navigate('/books')
 
     }
   return (
     <form className='form' onSubmit={handleLogin}>
         <h1>Login</h1>
-        {user?.user_email && <p>Welcome {user.user_email} {user.isAdmin ? "(Admin)" : "(User)"}</p>}
+        <h2>{currentUser.user_name}</h2>
+        {currentUser?.user_email && <p>Welcome {currentUser.user_email} {currentUser.isAdmin ? "(Admin)" : "(User)"}</p>}
         <input onChange={(e)=>setLoginInput((prev)=>({...prev, [e.target.name]: e.target.value}))} type="email" placeholder='Email' name='email' required/>
         <input onChange={(e)=>setLoginInput((prev)=>({...prev, [e.target.name]: e.target.value}))} type="password" name="password" id="password" placeholder='password' required />
         {error && <p style={{color:"indianred"}}>{error}</p>}

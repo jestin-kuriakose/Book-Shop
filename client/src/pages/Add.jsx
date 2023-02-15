@@ -5,9 +5,14 @@ import { useEffect } from 'react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import jwt_decode from "jwt-decode"
+import { useDispatch, useSelector } from 'react-redux'
+import { onSuccess } from '../redux/userSlice'
+import { requestwithTokens } from '../requests'
 
 const Add = () => {
+  const currentUser = useSelector((state)=>state.user.currentUser)
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const [uploadedFile, setUploadedFile] = useState(null)
   const [fileName, setFileName] = useState()
   const [fileUrl, setFileUrl] = useState()
@@ -22,8 +27,6 @@ const Add = () => {
     price: null,
     imageUrl:""
   })
-  const accessToken = localStorage.getItem("accessToken")
-
 
   const handleChange = (e) => {
     setBookInfo((prev)=> ({...prev, [e.target.name]: e.target.value}))
@@ -70,10 +73,16 @@ const Add = () => {
     formData.append("title", bookInfo.title)
     formData.append("desc", bookInfo.desc)
     formData.append("price", bookInfo.price)
-    
+    console.log(formData)
     try{
-      const result = await axios.post(`http://localhost:8800/books`, formData, {headers: {'Content-Type': 'multipart/form-data', authorization: "Bearer " + accessToken}})
-      console.log(result.data)
+      const res = await requestwithTokens('post', '/books', formData, currentUser.accessToken, true)
+
+      // updating the accessToken in the state if there is a new one created 
+      const newAccessToken = res.config.headers.authorization.split(" ")[1]
+      if(currentUser.accessToken != newAccessToken) {
+          dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+      }
+
       setIsFetching(false)
       navigate("/")
     } catch(err) {

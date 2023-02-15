@@ -5,29 +5,41 @@ import { Link, useNavigate } from "react-router-dom";
 import cover from '../assets/book-cover.png'
 import jwt_decode from "jwt-decode"
 import Book from '../components/Book';
+import { useDispatch, useSelector } from 'react-redux';
+import { increment } from '../redux/counterSlice';
+import { requestWithoutTokens, requestwithTokens } from '../requests';
+import { onSuccess } from '../redux/userSlice';
 
 const Books = () => {
+    const currentUser = useSelector((state)=> state.user.currentUser)
+    const userLoggedIn = useSelector((state)=>state.user.currentUser.accessToken) ? true : false
+    const dispatch = useDispatch()
+
     const [allBooks, setAllBooks] = useState([])
     const [pageSelected, setPageSelected] = useState(1)
-    const accessToken = localStorage.getItem("accessToken")
-    const refreshToken = localStorage.getItem("refreshToken")
-    const user_name = localStorage.getItem("user_name")
+
     let pages = []
     const [allPages, setAllPages] = useState([])
-    const navigate = useNavigate()
 
     useEffect(()=> {
         const getBooks = async () => {
             try{
-                const res = await axios.get("http://localhost:8800/books")
-                setAllBooks(res.data)
-                const pageCount = (Math.ceil(res.data.length/5)*5) / 5
-                console.log(res.data)
-                console.log(pageCount)
-                await assignPageCount(pageCount)
+                const res = await requestwithTokens('get', '/books', currentUser.refreshToken, currentUser.accessToken, false)
+                const result = res.data
+                
+                // updating the accessToken in the state if there is a new one created 
+                const newAccessToken = res.config.headers.authorization.split(" ")[1]
+                if(currentUser.accessToken != newAccessToken) {
+                    dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+                }
+
+                setAllBooks(result)
+                const pageCount = (Math.ceil(result.length/5)*5) / 5
+
+                assignPageCount(pageCount)
 
                 let i = 1;
-                let newBooks = res.data?.map((book, index)=> {
+                let newBooks = result?.map((book, index)=> {
                     if(index < (5*i)) {
                         return {...book, count: i}
                     } else {
@@ -58,9 +70,14 @@ const Books = () => {
     }
 
     const handleLogout = async() => {
-        await axios.post(`http://localhost:8800/logout`, refreshToken , {
-            headers: {authorization: "Bearer " + accessToken},
-        })
+        const res = await requestwithTokens('post', '/logout', currentUser.refreshToken, currentUser.accessToken, false)
+
+      // updating the accessToken in the state if there is a new one created 
+        const newAccessToken = res.config.headers.authorization.split(" ")[1]
+        if(currentUser.accessToken != newAccessToken) {
+            dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+        }
+
         localStorage.clear();
         window.location.reload()
     }
@@ -70,11 +87,11 @@ const Books = () => {
         <div className='cont'>
             <h1 style={{textAlign:"center"}}>Book Shop</h1>
             <Link to={'/add'}>Add New Book</Link>
-            {accessToken ? <button onClick={()=>handleLogout()}>Logout</button> : 
+            {userLoggedIn ? <button onClick={()=>handleLogout()}>Logout</button> : 
             <Link to={'/login'}>Login</Link>}
         </div>
 
-        <p>Hello {user_name} !</p>
+        <p>Hello {currentUser.user_name} !</p>
         
         <div>
             {allPages.map((p, index)=> (
@@ -88,8 +105,6 @@ const Books = () => {
         ))
         
         }</div>
-
-
 
     </div>
   )

@@ -1,9 +1,14 @@
 import axios from 'axios'
 import React, { useEffect, useState } from 'react'
 import { useRef } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { onSuccess } from '../redux/userSlice'
+import { requestwithTokens } from '../requests'
 
 const Update = () => {
+  const currentUser = useSelector((state)=>state.user.currentUser)
+  const dispatch = useDispatch()
   const [bookInfo, setBookInfo] = useState({
       title: "",
       desc: "",
@@ -26,13 +31,21 @@ const Update = () => {
   useEffect(()=> {
     const fetchBook = async () => {
       try{
-        const res = await axios.get(`http://localhost:8800/books/${bookId}`)
+        const res = await requestwithTokens('get', `/books/${bookId}`, currentUser.refreshToken, currentUser.accessToken, false)
+        const result = res.data
+        
+        // updating the accessToken in the state if there is a new one created 
+        const newAccessToken = res.config.headers.authorization.split(" ")[1]
+        if(currentUser.accessToken != newAccessToken) {
+            dispatch(onSuccess({...currentUser, accessToken: newAccessToken}))
+        }
+
         setBookInfo({
-          title: res.data[0].title,
-          desc: res.data[0].desc,
-          price: res.data[0].price,
-          imageUrl: res.data[0].imageUrl,
-          imageName: res.data[0].imageName
+          title: result[0].title,
+          desc: result[0].desc,
+          price: result[0].price,
+          imageUrl: result[0].imageUrl,
+          imageName: result[0].imageName
         })
 
       } catch(err) {

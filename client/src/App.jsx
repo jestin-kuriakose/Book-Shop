@@ -1,3 +1,4 @@
+import { useSelector } from "react-redux"
 import {BrowserRouter, Routes, Route} from "react-router-dom"
 import './App.css'
 import checkTokenExpiry from "./checkTokenExpiry"
@@ -10,7 +11,7 @@ import Users from "./pages/Users"
 
 
 function App() {
-  const userLoggedIn = localStorage.getItem("accessToken") ? true : false
+  const userLoggedIn = useSelector((state)=>state.user.currentUser.accessToken) ? true : false
   return (
     <div className="App">
       <BrowserRouter>

@@ -8,6 +8,7 @@ import dotenv from "dotenv"
 import crypto from 'crypto'
 import jwt from "jsonwebtoken";
 import util from 'util';
+import sql from "mysql2"
 
 dotenv.config()
 const app = express();

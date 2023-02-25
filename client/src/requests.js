@@ -1,8 +1,8 @@
 import axios from "axios"
 import jwt_decode from "jwt-decode"
 
-const url = process.env.NODE_ENV === "development" ? "http://localhost:8800" : "https://book-shop-0twv.onrender.com"
-
+// const url = process.env.NODE_ENV === "development" ? "http://localhost:8800" : "https://book-shop-0twv.onrender.com"
+const url = "http://35.79.223.19:8800"
 
 const axiosJWT = axios.create()
 

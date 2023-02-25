@@ -14,6 +14,7 @@ const app = express();
 
 const randomImageName = (bytes = 32) => crypto.randomBytes(bytes).toString('hex')
 
+// Database connection details
 const bucketName = process.env.BUCKET_NAME
 const bucketRegion = process.env.BUCKET_REGION
 const accessKey = process.env.ACCESS_KEY
